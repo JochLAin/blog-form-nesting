@@ -1,0 +1,65 @@
+services:
+    front:
+        image: "nginx:1.11"
+        container_name: "${APP_NAME}-front"
+        ports: ["127.0.0.1:49000:80", "127.0.0.1:49001:443"]
+        volumes:
+            - ".:/home/docker:ro"
+            - "./docker/front/nginx.conf:/etc/nginx/nginx.conf:ro"
+            - "./docker/front/default.conf:/etc/nginx/conf.d/default.conf:ro"
+            - "./docker/front/keys:/etc/nginx/keys:ro"
+        working_dir: "/etc/nginx"
+        depends_on: ["engine"]
+        networks: ["proxy", "default"]
+        labels:
+            - "traefik.enable=true"
+            - "traefik.docker.network=proxy"
+            - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
+            - "traefik.http.middlewares.https-redirect.redirectscheme.permanent=true"
+
+            - "traefik.http.routers.${APP_NAME}-front.rule=Host(`${APP_DOMAIN}`)"
+            - "traefik.http.routers.${APP_NAME}-front.middlewares=https-redirect@docker"
+            - "traefik.http.routers.${APP_NAME}-front.service=${APP_NAME}-front"
+            - "traefik.http.services.${APP_NAME}-front.loadbalancer.server.port=80"
+
+            - "traefik.http.routers.${APP_NAME}-front-secure.rule=Host(`${APP_DOMAIN}`)"
+            - "traefik.http.routers.${APP_NAME}-front-secure.service=${APP_NAME}-front-secure"
+            - "traefik.http.routers.${APP_NAME}-front-secure.tls=true"
+            - "traefik.http.services.${APP_NAME}-front-secure.loadbalancer.server.scheme=https"
+            - "traefik.http.services.${APP_NAME}-front-secure.loadbalancer.server.port=443"
+
+    engine:
+        build:
+            context: ./
+            dockerfile: "./docker/engine/Dockerfile"
+        container_name: "${APP_NAME}-engine"
+        user: "1000"
+        volumes: [ "./docker/engine/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro", ".:/home/docker:rw" ]
+        ports: ["127.0.0.1:49002:9000"]
+        working_dir: "/home/docker"
+        environment:
+            - "COMPOSER_HOME=/home/composer"
+            - "DATABASE_CLIENT_HOST=db"
+            - "DATABASE_CLIENT_USER=${APP_NAME}"
+            - "DATABASE_CLIENT_PASS=${APP_NAME}"
+            - "DATABASE_CLIENT_NAME=${APP_NAME}"
+        depends_on: ["db"]
+
+    db:
+        image: "postgres:12.2"
+        container_name: "${APP_NAME}-db"
+        environment:
+            - "POSTGRES_PASSWORD=${APP_NAME}"
+            - "POSTGRES_USER=${APP_NAME}"
+            - "POSTGRES_DB=${APP_NAME}"
+        ports: ["127.0.0.1:49010:5432"]
+        volumes: ["db:/var/lib/postgresql/data"]
+        working_dir: "/home/docker"
+
+volumes:
+    db: {}
+
+networks:
+    proxy:
+        external: true
+        name: "proxy"

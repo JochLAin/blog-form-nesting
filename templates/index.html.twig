@@ -1,0 +1,60 @@
+{% extends "base.html.twig" %}
+
+{# Macro d'affichage pour un jour #}
+{% macro renderFormDay(form) -%}
+    <div id="{{ form.vars.id }}">
+        <fieldset data-controller="form--collection" data-name="{{ form.parent.vars.name }}" data-prototype="{{ _self.renderFormMemo(form.memos.vars.prototype)|escape }}" data-allow-add data-allow-delete>
+            <div class="input-group">
+                {{ form_widget(form.day) }}
+                <button type="button" class="btn btn-primary btn-sm" data-form--collection-target="btnAdd">
+                    {{ 'Ajouter un mémo'|trans }}
+                </button>
+            </div>
+            <div class="row mx-0" data-form--collection-target="container">
+                {% for field in form.memos %}
+                    {{ _self.renderFormMemo(field) }}
+                {% else %}
+                    {# Permet de ne pas afficher le champs s'il est vide #}
+                    {% do form.memos.setRendered %}
+                {% endfor %}
+            </div>
+            {{ form_rest(form) }}
+        </fieldset>
+    </div>
+{%- endmacro %}
+
+{# Macro d'affichage pour un mémo #}
+{% macro renderFormMemo(form) -%}
+    <div id="{{ form.vars.id }}" class="col-12 col-md-4 col-xl-3 py-2 form-collection--item">
+        {{ form_row(form.title) }}
+        {{ form_row(form.description) }}
+        {{ form_row(form.done) }}
+        {{ form_rest(form) }}
+        <button type="button" class="btn btn-danger form--collection-deletor">
+            {{ 'Supprimer'|trans }}
+        </button>
+    </div>
+{%- endmacro %}
+
+{% block content -%}
+    {{ form_start(form) }}
+        <fieldset class="p-3" data-controller="form--collection">
+            <legend>
+                {{ 'Mes pense-bêtes'|trans }}
+            </legend>
+            <div data-form--collection-target="container">
+                {% for field in form.days %}
+                    {{ _self.renderFormDay(field) }}
+                {% else %}
+                    {% do form.days.setRendered %}
+                {% endfor %}
+            </div>
+            {{ form_rest(form) }}
+            <footer class="text-end">
+                <button type="submit" class="btn btn-success">
+                    {{ 'Valider'|trans }}
+                </button>
+            </footer>
+        </fieldset>
+    {{ form_end(form) }}
+{%- endblock content %}
